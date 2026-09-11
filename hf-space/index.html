@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Multi-Agent Mortgage Underwriting Demo</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #141b2d;
+      --panel2: #1b2439;
+      --text: #eef2ff;
+      --muted: #aab4cf;
+      --accent: #8aa4ff;
+      --good: #60d394;
+      --warn: #f0c36a;
+      --bad: #ff7d7d;
+      --line: #2a3653;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: linear-gradient(180deg, #0b1020 0%, #10172a 100%);
+      color: var(--text);
+    }
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 36px 20px 56px; }
+    h1 { font-size: clamp(2rem, 4vw, 3.4rem); margin: 0 0 8px; }
+    h2, h3 { margin-top: 0; }
+    .subtitle { color: var(--muted); max-width: 850px; line-height: 1.6; }
+    .grid { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+    .card {
+      background: rgba(20,27,45,.94);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.18);
+    }
+    .case-card { cursor: pointer; transition: transform .18s ease, border-color .18s ease; }
+    .case-card:hover { transform: translateY(-2px); border-color: var(--accent); }
+    .case-card.active { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(138,164,255,.18); }
+    .badge { display:inline-block; padding: 6px 10px; border-radius: 999px; font-size: .82rem; font-weight: 700; }
+    .approve { background: rgba(96,211,148,.14); color: var(--good); }
+    .conditional { background: rgba(240,195,106,.14); color: var(--warn); }
+    .deny { background: rgba(255,125,125,.14); color: var(--bad); }
+    .metric { color: var(--muted); margin: 6px 0; }
+    .controls { display:flex; gap:12px; flex-wrap:wrap; margin: 24px 0; }
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 13px 18px;
+      font-weight: 700;
+      cursor: pointer;
+      background: var(--accent);
+      color: #081020;
+    }
+    button.secondary { background: var(--panel2); color: var(--text); border: 1px solid var(--line); }
+    .flow { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin: 18px 0; }
+    .node { background: var(--panel2); border:1px solid var(--line); border-radius: 12px; padding:10px 12px; }
+    .arrow { color: var(--muted); font-weight: 700; }
+    .analysis-grid { display:grid; gap:14px; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); }
+    .analysis { background:#11182a; border:1px solid var(--line); border-radius:14px; padding:15px; }
+    .analysis h4 { margin: 0 0 8px; }
+    .analysis p, li { color: var(--muted); line-height:1.5; }
+    .decision-box { margin-top:18px; padding:20px; background:#10182b; border:1px solid var(--line); border-radius:16px; }
+    .small { font-size:.9rem; color:var(--muted); }
+    a { color:#aebeff; }
+    .hidden { display:none; }
+    footer { margin-top: 30px; color: var(--muted); font-size:.9rem; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Multi-Agent Mortgage Underwriting System</h1>
+    <p class="subtitle">
+      Agentic AI portfolio demo by <strong>Chantell Harris-Headley</strong>. This interactive demonstration shows how a Supervisor coordinates specialized Credit, Income, Asset, Collateral, Critic, and Decision agents across a structured underwriting workflow.
+    </p>
+
+    <div class="grid" id="caseGrid"></div>
+
+    <div class="controls">
+      <button id="runBtn">Run Multi-Agent Workflow</button>
+      <button class="secondary" id="resetBtn">Reset</button>
+    </div>
+
+    <section class="card hidden" id="workflowPanel">
+      <h2>Agent Workflow</h2>
+      <div class="flow" id="flow"></div>
+      <p class="small">The public demo uses synthetic data and deterministic sample logic. It does not make real lending decisions.</p>
+    </section>
+
+    <section class="card hidden" id="analysisPanel">
+      <h2>Specialist Analyses</h2>
+      <div class="analysis-grid" id="analyses"></div>
+      <div class="decision-box" id="decision"></div>
+    </section>
+
+    <section class="card" style="margin-top:18px;">
+      <h2>What This Demonstrates</h2>
+      <div class="analysis-grid">
+        <div class="analysis"><h4>Supervisor Orchestration</h4><p>Sequential routing and shared workflow state across multiple specialist agents.</p></div>
+        <div class="analysis"><h4>Deterministic Calculations</h4><p>DTI and LTV are calculated outside the language model for reproducibility and auditability.</p></div>
+        <div class="analysis"><h4>Critic Review</h4><p>A dedicated Critic layer reviews specialist outputs, flags risk, and determines escalation needs.</p></div>
+        <div class="analysis"><h4>Human-in-the-Loop</h4><p>Borderline and high-risk cases are explicitly marked for human review rather than fully automated disposition.</p></div>
+        <div class="analysis"><h4>Privacy-Oriented Controls</h4><p>The source project demonstrated PII masking before data is provided to an LLM.</p></div>
+        <div class="analysis"><h4>RAG Policy Retrieval</h4><p>The original project used ChromaDB-based retrieval for mortgage policy context.</p></div>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top:18px;">
+      <h2>Technical Stack</h2>
+      <p class="subtitle">Python • LangGraph • LangChain • OpenAI models • ChromaDB • RAG • deterministic financial tools • multi-agent orchestration • critic review • human-review escalation</p>
+      <p><strong>Full technical repository:</strong> <a href="https://github.com/g5ktjkr4fr-cpu/multi-agent-mortgage-underwriting" target="_blank" rel="noopener">GitHub</a></p>
+    </section>
+
+    <footer>
+      Educational portfolio demonstration only. Not financial advice, not a lending decision engine, and not a substitute for validated underwriting policy, fair-lending review, model-risk governance, or qualified human oversight.
+    </footer>
+  </div>
+
+  <script>
+    const cases = {
+      strong: {
+        title: "Strong Profile",
+        result: "APPROVED",
+        badge: "approve",
+        metrics: { credit: 760, dti: "28.0%", ltv: "85.0%", assets: "$120,000" },
+        risks: [],
+        review: "No additional escalation required by the demo rules.",
+        specialist: {
+          "Credit Analyst": "Excellent credit profile with no major derogatory indicators.",
+          "Income Analyst": "DTI is within the demonstration guideline.",
+          "Asset Analyst": "Strong liquid assets and reserve capacity.",
+          "Collateral Analyst": "LTV is within the demonstration guideline.",
+          "Critic Agent": "Low aggregate risk; no material contradictions identified."
+        }
+      },
+      borderline: {
+        title: "Borderline Profile",
+        result: "CONDITIONAL",
+        badge: "conditional",
+        metrics: { credit: 660, dti: "45.88%", ltv: "92.31%", assets: "$28,000" },
+        risks: ["Elevated DTI", "Elevated LTV", "Recent late payment"],
+        review: "Human review required.",
+        specialist: {
+          "Credit Analyst": "Acceptable score with a recent late-payment concern.",
+          "Income Analyst": "DTI is above the illustrative guideline and requires review.",
+          "Asset Analyst": "Assets are present but reserve strength is limited relative to the strong case.",
+          "Collateral Analyst": "LTV is elevated and increases collateral risk.",
+          "Critic Agent": "Multiple moderate-risk indicators warrant escalation."
+        }
+      },
+      high: {
+        title: "High-Risk Profile",
+        result: "DENIED",
+        badge: "deny",
+        metrics: { credit: 595, dti: "58.57%", ltv: "92.65%", assets: "$14,000" },
+        risks: ["Sub-600 credit score", "High DTI", "Recent late payments", "Collections", "Elevated LTV"],
+        review: "Human review required.",
+        specialist: {
+          "Credit Analyst": "High credit risk due to low score and derogatory indicators.",
+          "Income Analyst": "DTI materially exceeds the demonstration threshold.",
+          "Asset Analyst": "Limited liquid assets relative to loan size.",
+          "Collateral Analyst": "Elevated LTV increases risk.",
+          "Critic Agent": "Multiple significant risks identified; high-risk escalation recommended."
+        }
+      }
+    };
+
+    let selected = "strong";
+    const grid = document.getElementById("caseGrid");
+    const workflowPanel = document.getElementById("workflowPanel");
+    const analysisPanel = document.getElementById("analysisPanel");
+    const analyses = document.getElementById("analyses");
+    const flow = document.getElementById("flow");
+    const decision = document.getElementById("decision");
+
+    function renderCases() {
+      grid.innerHTML = "";
+      Object.entries(cases).forEach(([key, c]) => {
+        const card = document.createElement("div");
+        card.className = `card case-card ${key === selected ? "active" : ""}`;
+        card.innerHTML = `
+          <h3>${c.title}</h3>
+          <span class="badge ${c.badge}">${c.result}</span>
+          <p class="metric">Credit score: <strong>${c.metrics.credit}</strong></p>
+          <p class="metric">DTI: <strong>${c.metrics.dti}</strong></p>
+          <p class="metric">LTV: <strong>${c.metrics.ltv}</strong></p>
+          <p class="metric">Liquid assets: <strong>${c.metrics.assets}</strong></p>`;
+        card.onclick = () => { selected = key; renderCases(); workflowPanel.classList.add("hidden"); analysisPanel.classList.add("hidden"); };
+        grid.appendChild(card);
+      });
+    }
+
+    function runWorkflow() {
+      const c = cases[selected];
+      const sequence = ["Supervisor", "Credit", "Supervisor", "Income", "Supervisor", "Asset", "Supervisor", "Collateral", "Supervisor", "Critic", "Supervisor", "Decision"];
+      flow.innerHTML = sequence.map((n, i) => `<span class="node">${n}</span>${i < sequence.length - 1 ? '<span class="arrow">→</span>' : ''}`).join("");
+
+      analyses.innerHTML = "";
+      Object.entries(c.specialist).forEach(([name, text]) => {
+        const box = document.createElement("div");
+        box.className = "analysis";
+        box.innerHTML = `<h4>${name}</h4><p>${text}</p>`;
+        analyses.appendChild(box);
+      });
+
+      const riskList = c.risks.length ? `<ul>${c.risks.map(r => `<li>${r}</li>`).join("")}</ul>` : "<p>No material risks identified by the demo rules.</p>";
+      decision.innerHTML = `
+        <h3>Decision Agent</h3>
+        <span class="badge ${c.badge}">${c.result}</span>
+        <p><strong>Key risks</strong></p>
+        ${riskList}
+        <p><strong>Human review:</strong> ${c.review}</p>
+        <p class="small">This is an illustrative portfolio output based on synthetic data and simplified demonstration rules.</p>`;
+
+      workflowPanel.classList.remove("hidden");
+      analysisPanel.classList.remove("hidden");
+      analysisPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    document.getElementById("runBtn").onclick = runWorkflow;
+    document.getElementById("resetBtn").onclick = () => {
+      selected = "strong";
+      renderCases();
+      workflowPanel.classList.add("hidden");
+      analysisPanel.classList.add("hidden");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+
+    renderCases();
+  </script>
+</body>
+</html>
